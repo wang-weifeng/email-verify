@@ -6,4 +6,7 @@ const userCtrl = require('../controllers/userControllers');
 //user_regist
 router.post('/user_regist', userCtrl.user_regist);
 
+//user_activation
+router.get('/user_activation', userCtrl.user_activation);
+
 module.exports = router;
