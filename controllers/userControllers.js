@@ -147,7 +147,7 @@ const user_login = async function (req, res) {
 	console.log("controllers/UserController.js/user_login start --> " + JSON.stringify(req.body));
 	const respondData = {
 		status: 200,
-		data: {},
+		data: [],
 		error: '',
 		msg: ''
 	};
@@ -192,6 +192,20 @@ const user_login = async function (req, res) {
 			respondData.error = "邮箱未激活，请激活邮箱";
 			return res.json(respondData);
 		} else if(userverify.status === 1){
+			const tokenexpiraton = 1800;
+			const token = require('crypto').randomBytes(16).toString('hex');
+			const tokenContent = {
+				useremail: userverify.useremail,
+				username: userverify.username
+			};
+			redis.set(token, JSON.stringify(tokenContent));
+			redis.expire(token, tokenexpiraton);
+			const userBackInfo = {};
+			userBackInfo.token = token;
+			userBackInfo.useremail = userverify.useremail;
+			userBackInfo.username = userverify.username;
+			userBackInfo._id = userverify._id;
+			respondData.data.push(userBackInfo);
 			respondData.msg = "登陆成功";
 			return res.json(respondData);
 		}	
