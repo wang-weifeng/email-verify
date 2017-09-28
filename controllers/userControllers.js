@@ -139,6 +139,71 @@ const user_activation = async function (req, res) {
 }
 
 /**
+ * params:  {user_email,user_password,user_name}
+ * return:  users
+ * describe: user_login
+ **/
+const user_login = async function (req, res) {
+	console.log("controllers/UserController.js/user_login start --> " + JSON.stringify(req.body));
+	const respondData = {
+		status: 200,
+		data: {},
+		error: '',
+		msg: ''
+	};
+	// 检查必传字段是否传过来
+	const is_available = Jcommon.check_key_words(["user_email", "user_password"], req, res, 'POST');
+	if (is_available == false) return; // 如果字段不合格，直接返回
+	const user_email = req.body.user_email;
+	const user_password = req.body.user_password;
+
+	// 验证邮箱是否正确
+	const is_email = Jverify.verify_email(user_email);
+	if (is_email == false) {
+		respondData.status = 10000;
+		respondData.error = "邮箱不符合规范";
+		return res.json(respondData);
+	}
+
+	// 验证密码是否正确
+	const is_password_str = Jverify.verify_password(user_password);
+	const is_enable_length = (user_password.length > 6 && user_password.length < 20) ? true : false;
+	if (!(is_password_str && is_enable_length)) {
+		respondData.status = 10001;
+		respondData.error = "密码不符合规范";
+		return res.json(respondData);
+	}
+	try {
+		const user = await findUserAsyc({ 'useremail': user_email });//验证用户是否已注册
+		if (!user) {
+			respondData.status = 10000;
+			respondData.error = "邮箱未注册";
+			return res.json(respondData);
+		}
+		const userverify = await findUserVerify(user_email,user_password);//验证用户
+		if(!userverify){
+			respondData.status = 10005;
+			respondData.error = "邮箱或密码错误";
+			return res.json(respondData);
+		}
+		console.log(userverify);
+		if(userverify.status === 0){
+			respondData.status = 10006;
+			respondData.error = "邮箱未激活，请激活邮箱";
+			return res.json(respondData);
+		} else if(userverify.status === 1){
+			respondData.msg = "登陆成功";
+			return res.json(respondData);
+		}	
+	} catch (error) {
+		//错误处理
+		console.log("controllers/UserController.js/user_regist error -->" + JSON.stringify(error));
+		respondData.error = error;
+		return res.json(respondData);
+	}
+}
+
+/**
  * params:  {cnd}:user find condition
  * return:  user
  * describe: findUserAsyc
@@ -148,6 +213,25 @@ const findUserAsyc = async function (cnd) {
 	return new Promise(function (resolve, reject) {
 		UserModel.findOne(cnd, function (error, data) {
 			console.log("controllers/UserController.js/findUserAsyc findOne  data --> " + JSON.stringify(data));
+			if (error) {
+				return reject(error);
+			}
+			return resolve(data);
+		});
+	})
+}
+
+/**
+ * params:  {cnd}:user find condition
+ * return:  user
+ * describe: findUserVerify
+ **/
+const findUserVerify = async function (email,password) {
+	console.log("controllers/UserController.js/findUserVerify start --> " + JSON.stringify(email));
+	const userPassword = md5(password);
+	return new Promise(function (resolve, reject) {
+		UserModel.findOne({'$and':[{useremail:email},{userpwd:userPassword}]}, function (error, data) {
+			console.log("controllers/UserController.js/findUserVerify findOne  data --> " + JSON.stringify(data));
 			if (error) {
 				return reject(error);
 			}
@@ -205,3 +289,4 @@ function sendUserEmail(cnd) {
 
 exports.user_regist = user_regist;
 exports.user_activation = user_activation;
+exports.user_login = user_login;

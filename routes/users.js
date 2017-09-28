@@ -9,4 +9,7 @@ router.post('/user_regist', userCtrl.user_regist);
 //user_activation
 router.get('/user_activation', userCtrl.user_activation);
 
+//user_login
+router.post('/user_login', userCtrl.user_login);
+
 module.exports = router;
