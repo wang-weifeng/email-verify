@@ -19,7 +19,7 @@ router.post('/user_regist', userCtrl.user_regist);
 ```
 controllers中注册的部分代码如下：
 ```js
- try {
+ 	try {
 		const user = await findUserAsyc({ 'useremail': user_email });//验证用户是否已注册
 		if (user) {
 			respondData.status = 10002;
@@ -62,7 +62,7 @@ controllers中注册的部分代码如下：
 ```
 邮箱发送部分代码
 ```js
-var config_email = {
+	var config_email = {
 		host: 'smtp.163.com',
 		post: 25, // SMTP 端口
 		//secureConnection: true, // 使用 SSL
@@ -98,3 +98,122 @@ var config_email = {
 ![postman模拟注册](https://github.com/wang-weifeng/picture/blob/master/email-verify/post-regist.png)
 
 此时的截图正好把发送邮箱的消息也截取了，完美
+
+用户没有激活时数据库中这条用户的status=0；如图：
+数据库用户信息
+![数据库用户信息](https://github.com/wang-weifeng/picture/blob/master/email-verify/db-wjh.png)
+
+## 4. 用户邮箱激活
+通过点击邮箱中的链接会激活邮箱，当邮箱和code不匹配时，会返回邮箱不匹配消息，当code过期时，会返回code过期消息，当用户已激活时，会告诉已激活，不要重复激活，当用户信息无上述的几种情况时会，提示激活成功。
+路由routes中激活路由如下：
+```js
+//user_activation
+router.get('/user_activation', userCtrl.user_activation);
+```
+controllers中注册的部分代码如下：
+```js
+	try {
+		let codeVal = await Jtoken(code);
+		if (!codeVal) {
+			respondData.error = "code失效，请重新发送邮件激活";
+			return res.json(respondData);
+		}
+		let userinfo = JSON.parse(codeVal);
+		if (userinfo.userEmail !== user_email) {
+			respondData.error = "邮箱不正确";
+			return res.json(respondData);
+		}
+		const user = await findUserAsyc({ 'useremail': user_email });//验证用户是否已注册
+		if (user) {
+			if (user.status === 0) {
+				UserModel.update({ 'useremail': user_email }, { '$set': { status: 1 } }, function (err, results) {
+					if (err) {
+						console.log("UserModel.update err-->" + JSON.stringify(err));
+						respondData.status = "00001";
+						respondData.error = "mongodb system error";
+						return res.json(respondData);
+					}
+					respondData.msg = "邮箱激活成功";
+					return res.json(respondData);
+				})
+			} else if (user.status === 1) {
+				respondData.msg = "此邮箱已经激活了哦，不要重复激活";
+				return res.json(respondData);
+			}
+		}
+	} catch (error) {
+		//错误处理
+		console.log("controllers/UserController.js/user_regist error -->" + JSON.stringify(error));
+		respondData.error = error;
+		return res.json(respondData);
+	}
+```
+使用postman模拟激活成功
+![postman模拟激活成功](https://github.com/wang-weifeng/picture/blob/master/email-verify/code-success.png)
+使用postman模拟激活code失效
+![postman模拟激活code失效](https://github.com/wang-weifeng/picture/blob/master/email-verify/code-fail.png)
+
+激活成功时数据库的用户信息
+![激活成功时数据库的用户信息](https://github.com/wang-weifeng/picture/blob/master/email-verify/db-jh.png)
+## 5. 用户登陆接口
+当用户未激活时，登陆会告知未激活，需要去激活，当已激活时信息正常时会成功登陆，当成功登陆时会返回用户的一些信息以及加一个token。
+路由routes中登陆路由如下：
+```js
+//user_login
+router.post('/user_login', userCtrl.user_login);
+```
+controllers中登陆的部分代码如下：
+```js
+	try {
+		const user = await findUserAsyc({ 'useremail': user_email });//验证用户是否已注册
+		if (!user) {
+			respondData.status = 10000;
+			respondData.error = "邮箱未注册";
+			return res.json(respondData);
+		}
+		const userverify = await findUserVerify(user_email,user_password);//验证用户
+		if(!userverify){
+			respondData.status = 10005;
+			respondData.error = "邮箱或密码错误";
+			return res.json(respondData);
+		}
+		console.log(userverify);
+		if(userverify.status === 0){
+			respondData.status = 10006;
+			respondData.error = "邮箱未激活，请激活邮箱";
+			return res.json(respondData);
+		} else if(userverify.status === 1){
+			const tokenexpiraton = 1800;
+			const token = require('crypto').randomBytes(16).toString('hex');
+			const tokenContent = {
+				useremail: userverify.useremail,
+				username: userverify.username
+			};
+			redis.set(token, JSON.stringify(tokenContent));
+			redis.expire(token, tokenexpiraton);
+			const userBackInfo = {};
+			userBackInfo.token = token;
+			userBackInfo.useremail = userverify.useremail;
+			userBackInfo.username = userverify.username;
+			userBackInfo._id = userverify._id;
+			respondData.data.push(userBackInfo);
+			respondData.msg = "登陆成功";
+			return res.json(respondData);
+		}	
+	} catch (error) {
+		//错误处理
+		console.log("controllers/UserController.js/user_regist error -->" + JSON.stringify(error));
+		respondData.error = error;
+		return res.json(respondData);
+	}
+```
+
+未激活登陆时
+![未激活登陆时](https://github.com/wang-weifeng/picture/blob/master/email-verify/login-fail.png)
+
+已激活登陆时
+![已激活登陆时](https://github.com/wang-weifeng/picture/blob/master/email-verify/post-login.png)
+
+## 6. 后续
+目前来说只有注册，激活，登陆接口，后续也可以实现更多的功能，同时还没有测试，其实也可以加上测试的。
+
