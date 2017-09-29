@@ -60,6 +60,41 @@ controllers中注册的部分代码如下：
 	}
 
 ```
+邮箱发送部分代码
+```js
+var config_email = {
+		host: 'smtp.163.com',
+		post: 25, // SMTP 端口
+		//secureConnection: true, // 使用 SSL
+		auth: {
+			user: 'wangweifengyx@163.com',
+			//这里密码不是qq密码，是你设置的smtp密码
+			pass: 'wwf'
+		}
+	};
+	var transporter = nodemailer.createTransport(config_email);
+
+	var html = "<div>http://127.0.0.1:3000?code=" + code + "&account=" + cnd + "</div>";
+	console.log(html);
+	var data = {
+		from: 'wangweifengyx@163.com', // 发件地址
+		to: cnd, // 收件列表
+		subject: 'Hello feng', // 标题
+
+		//text: html // 标题 //text和html两者只支持一种
+		html: html // html 内容
+	};
+	console.log(data);
+	transporter.sendMail(data, function (err, info) {
+		if (err) {
+			return (err);
+		}
+		console.log(info.response);
+		return (info.response);
+
+	});
+```
+使用postman模拟注册
 ![postman模拟注册](https://github.com/wang-weifeng/picture/blob/master/email-verify/post-regist.png)
 
 此时的截图正好把发送邮箱的消息也截取了，完美
