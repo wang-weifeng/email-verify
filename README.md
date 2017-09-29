@@ -8,6 +8,7 @@
 > * postman
 ## 2. 项目结构
 ![项目结构图](https://github.com/wang-weifeng/picture/blob/master/email-verify/pro-jg.png)
+
 图中说明了关键文件的含义
 ## 3. 用户注册接口
 当用户注册时，首先检查必要字段是否传入以及邮箱密码是否符合规范，然后检查邮箱是否已注册，当注册成功时会发送一个邮件给用户用来激活这个账号，这个发送的邮件内容为一个链接，包含了这个用户的邮箱以及code，code使用reids设置了过期时间。（未激活时用户状态为0，激活状态为1）
@@ -60,4 +61,5 @@ controllers中注册的部分代码如下：
 
 ```
 ![postman模拟注册](https://github.com/wang-weifeng/picture/blob/master/email-verify/post-regist.png)
+
 此时的截图正好把发送邮箱的消息也截取了，完美
