@@ -204,7 +204,7 @@ controllers中登陆的部分代码如下：
 		//错误处理
 		console.log("controllers/UserController.js/user_regist error -->" + JSON.stringify(error));
 		respondData.error = error;
-		return res.json(respondData);
+		return res.json(respondDaata);
 	}
 ```
 
